@@ -9,7 +9,7 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from sklearn.preprocessing import LabelEncoder
 
 # Load and preprocess data
-day15 = pd.read_csv('/content/drive/MyDrive/DDOS_Datasets/CSE-CIC-IDS2018/02-15-2018.csv')
+day15 = pd.read_csv('02-15-2018.csv')
 main_df = day15.drop_duplicates(keep='first')
 one_value = main_df.columns[main_df.nunique() == 1]
 main_df_2 = main_df.drop(columns=one_value, axis=1)
@@ -25,3 +25,16 @@ def check_column_types(dataframe):
 
 # Check each column in the DataFrame
 check_column_types(main_df_2)
+
+def find_rows_with_type(dataframe, column_name, data_type):
+    rows_with_type = []
+    for index, value in dataframe[column_name].iteritems():
+        if isinstance(value, data_type):
+            rows_with_type.append(index)
+    return rows_with_type
+
+# Find rows in 'Dst Port' where the data type is str (string)
+rows_with_string = find_rows_with_type(main_df_2, 'Dst Port', str)
+
+# Print the rows
+print(f"Rows in 'Dst Port' with string data type: {rows_with_string}")
