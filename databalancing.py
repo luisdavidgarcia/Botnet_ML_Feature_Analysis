@@ -5,38 +5,47 @@ from sklearn.preprocessing import LabelEncoder
 from imblearn.over_sampling import SMOTE
 from collections import Counter
 
-# Load the dataset
-df = pd.read_csv("02-15-2018_1.csv")
+def prepare_balanced_data(df, random_state=42, test_size=0.25):
+    # Drop rows with NaN values across the entire DataFrame to ensure alignment
+    df_cleaned = df.dropna()
 
-# Drop rows with NaN values across the entire DataFrame to ensure alignment
-df_cleaned = df.dropna()
+    # Select features excluding 'object' types and the label
+    x = df_cleaned.select_dtypes(exclude=['object'])  
+    y = df_cleaned['Label'].replace(['DoS attacks-GoldenEye', 'DoS attacks-Slowloris'], 'DoS')
 
-# Select features excluding 'object' types and the label
-X = df_cleaned.select_dtypes(exclude=['object'])  # Features
-y = df_cleaned['Label']  # Assuming 'Label' is the name of your target column
+    # Replace infinity values with NaN in X and then drop any rows with NaN values to clean both X and y together
+    x.replace([np.inf, -np.inf], np.nan, inplace=True)
+    x.dropna(inplace=True)
 
-# At this point, X and y are aligned and have the same number of rows
+    # Ensuring y is aligned with X after dropping rows, before encoding
+    y = y.loc[x.index]
 
-# Replace infinity values with NaN in X and then drop any rows with NaN values to clean both X and y together
-X.replace([np.inf, -np.inf], np.nan, inplace=True)
-X.dropna(inplace=True)
+    # Encoding the labels
+    encoder = LabelEncoder()
+    y_encoded = encoder.fit_transform(y)
 
-# Ensuring y is aligned with X after dropping rows, before encoding
-y = y.loc[X.index]
+    # Now, X and y_encoded are aligned and ready for train-test split and further processing
 
-# Encoding the labels
-encoder = LabelEncoder()
-y_encoded = encoder.fit_transform(y)
+    # Split the dataset into training and testing sets
+    x_train, x_test, y_train, y_test = train_test_split(x, y_encoded, test_size=test_size, random_state=random_state)
 
-# Now, X and y_encoded are aligned and ready for train-test split and further processing
+    return x_train, x_test, y_train, y_test
 
-# Split the dataset into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.25, random_state=42)
+def apply_smote(x_train, y_train, random_state=42, sampling_strategy='auto'):
+    # Applying SMOTE
+    smote = SMOTE(random_state=random_state, sampling_strategy=sampling_strategy)
+    x_resampled, y_resampled = smote.fit_resample(x_train, y_train)
 
-# Applying SMOTE
-smote = SMOTE(random_state=42)
-X_resampled, y_resampled = smote.fit_resample(X_train, y_train)
+    # Checking the class distribution
+    print(f"Original class distribution: {Counter(y_train)}")
+    print(f"Resampled class distribution: {Counter(y_resampled)}")
 
-# Checking the class distribution
-print(f"Original class distribution: {Counter(y_train)}")
-print(f"Resampled class distribution: {Counter(y_resampled)}")
+    return x_resampled, y_resampled
+
+if __name__ == "__main__":
+    # Load the dataset
+    df = pd.read_csv("02-15-2018_1.csv")
+
+    # Prepare balanced data
+    x_train, x_test, y_train, y_test = prepare_balanced_data(df)
+    x_resampled, y_resampled = apply_smote(x_train, y_train, sampling_strategy=0.45)
