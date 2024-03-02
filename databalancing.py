@@ -6,8 +6,19 @@ from imblearn.over_sampling import SMOTE
 from collections import Counter
 
 def prepare_balanced_data(df, random_state=42, test_size=0.25):
-    # Drop rows with NaN values across the entire DataFrame to ensure alignment
-    # df_cleaned = df.dropna()
+    """ This function prepares the data for training and testing by removing duplicates, unnecessary columns, and cleaning the data.
+    Args:
+        df: pandas DataFrame 
+        random_state: int, default=42
+        test_size: float, default=0.25
+
+    Returns:
+        x_train: pandas DataFrame
+        x_test: pandas DataFrame
+        y_train: pandas Series
+        y_test: pandas Series
+        label_mapping: dict
+    """
 
     main_df = df.drop_duplicates(keep='first')
     one_value = main_df.columns[main_df.nunique() == 1]
@@ -36,16 +47,6 @@ def prepare_balanced_data(df, random_state=42, test_size=0.25):
     x = main_df_2.drop('Label', axis=1)
     y = main_df_2['Label']
 
-    print("Label mapping:", label_mapping)
-    print("Total counts per label in y:", y.value_counts())
-    print("Total number of rows in y:", y.shape[0])
-    total_goldeneye = y.value_counts()[label_mapping['DoS attacks-GoldenEye']]
-    total_slowloris = y.value_counts()[label_mapping['DoS attacks-Slowloris']]
-    total_benign = y.value_counts()[label_mapping['Benign']]    
-    print(f"Percentage of 'DoS attacks-GoldenEye' in y: {total_goldeneye/y.shape[0]*100:.2f}%")
-    print(f"Percentage of 'DoS attacks-Slowloris' in y: {total_slowloris/y.shape[0]*100:.2f}%")
-    print(f"Percentage of 'Benign' in y: {total_benign/y.shape[0]*100:.2f}%")
-
     # Replace infinity values with NaN in X and then drop any rows with NaN values to clean both X and y together
     x.replace([np.inf, -np.inf], np.nan, inplace=True)
     x.dropna(inplace=True)
@@ -57,20 +58,56 @@ def prepare_balanced_data(df, random_state=42, test_size=0.25):
     encoder = LabelEncoder()
     y_encoded = encoder.fit_transform(y)
 
-    # Now, X and y_encoded are aligned and ready for train-test split and further processing
-
     # Split the dataset into training and testing sets
     x_train, x_test, y_train, y_test = train_test_split(x, y_encoded, test_size=test_size, random_state=random_state)
 
     return x_train, x_test, y_train, y_test, label_mapping
 
-def apply_smote(x_train, y_train, random_state=42, sampling_strategy='auto'):
+def apply_smote(x_train, y_train, random_state=42, begnin_ratio=0.0):
+    """ This function applies SMOTE to the training data to balance the classes.
+
+    Args:
+        x_train: pandas DataFrame
+        y_train: pandas Series
+        random_state: int, default=42
+        begnin_ratio: float, default=0.0
+
+    Returns:
+        x_resampled: pandas DataFrame
+        y_resampled: pandas Series
+    """
+
+    if begnin_ratio == 0.0:
+        smote = SMOTE(random_state=random_state)
+        x_resampled, y_resampled = smote.fit_resample(x_train, y_train)
+
+        # Checking the class distribution
+        print(f"Total samples in the training set: {len(y_train)}")
+        print(f"Original class distribution: {Counter(y_train)}")
+        print(f"Resampled class distribution: {Counter(y_resampled)}")
+        return x_resampled, y_resampled
+
+    # Calculate the desired number of samples for each class
+    count_labels = Counter(y_train)
+    
+    dos_labels_sum = count_labels[1] + count_labels[2]
+    goldeneye_ratio = count_labels[1] / dos_labels_sum
+    slowloris_ratio = count_labels[2] / dos_labels_sum
+
+    total_benign = count_labels[0]
+    total_samples = len(y_train)
+    total_samples_to_add_to_dos =  (total_benign/begnin_ratio - total_samples)
+    desired_samples_goldeneye = int(total_samples_to_add_to_dos * goldeneye_ratio) + count_labels[1]
+    desired_samples_slowloris = int(total_samples_to_add_to_dos * slowloris_ratio) + count_labels[2]
+
     # Applying SMOTE
-    smote = SMOTE(random_state=random_state, sampling_strategy=sampling_strategy)
+    smote = SMOTE(random_state=random_state, sampling_strategy={1: desired_samples_goldeneye, 2: desired_samples_slowloris})
     x_resampled, y_resampled = smote.fit_resample(x_train, y_train)
 
     # Checking the class distribution
+    print(f"Total samples in the training set: {len(y_train)}")
     print(f"Original class distribution: {Counter(y_train)}")
+    print(f"Total samples in the resampled set: {len(y_resampled)}")
     print(f"Resampled class distribution: {Counter(y_resampled)}")
 
     return x_resampled, y_resampled
@@ -81,4 +118,4 @@ if __name__ == "__main__":
 
     # Prepare balanced data
     x_train, x_test, y_train, y_test, label_map = prepare_balanced_data(df)
-    # x_resampled, y_resampled = apply_smote(x_train, y_train, sampling_strategy={1: 740969, 2: 740969})
+    x_resampled, y_resampled = apply_smote(x_train, y_train, begnin_ratio=0.8)
