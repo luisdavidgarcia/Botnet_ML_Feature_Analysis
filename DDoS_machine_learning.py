@@ -7,55 +7,45 @@ from sklearn.linear_model import LogisticRegression
 from xgboost import XGBClassifier
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from sklearn.preprocessing import LabelEncoder
+from databalancing import prepare_balanced_data, apply_smote
 
-# Load and preprocess data
-day15 = pd.read_csv('/content/drive/MyDrive/DDOS_Datasets/CSE-CIC-IDS2018/02-15-2018.csv')
-main_df = day15.drop_duplicates(keep='first')
-one_value = main_df.columns[main_df.nunique() == 1]
-main_df_2 = main_df.drop(columns=one_value, axis=1)
+# Load the dataset
+df = pd.read_csv('02-15-2018.csv')
+x_train, x_test, y_train, y_test, label_map = prepare_balanced_data(df)
 
-# Drop unnecessary columns
-columns_to_drop = ['Timestamp']
-for col in columns_to_drop:
-    if col in main_df_2.columns:
-        main_df_2 = main_df_2.drop(col, axis=1)
+# Benign Ratio Ranges
+benign_ratios = [0.5, 0.7, 0.8]
 
-# Clean data, remove too big of values
-main_df_2 = main_df_2.replace([np.inf, -np.inf], np.nan).dropna()
+# Apply SMOTE
+for benign_ratio in benign_ratios:
+    print("---------------------------------------------------------------------")
+    print(f"Applying SMOTE with benign ratio: {benign_ratio}")
+    x_resampled, y_resampled = apply_smote(x_train, y_train, begnin_ratio=benign_ratio)
 
-# Handle the target variable
-if main_df_2['Label'].dtype == 'object':
-    le = LabelEncoder()
-    main_df_2['Label'] = le.fit_transform(main_df_2['Label'])
+    print(f"Len of x_train: {len(x_train)} and len of x_resampled: {len(x_resampled)}")
+    print("---------------------------------------------------------------------")
 
+    # Initialize models
+    rf_model = RandomForestClassifier(random_state=42)
+    dt_model = DecisionTreeClassifier(random_state=42)
+    lr_model = LogisticRegression(max_iter=1000)
+    xgb_model = XGBClassifier(use_label_encoder=False, eval_metric='mlogloss')
 
-# Separating features and target
-X = main_df_2.drop('Label', axis=1)
-y = main_df_2['Label']
+    # Train and evaluate each model
+    models = [rf_model, dt_model, lr_model, xgb_model]
+    model_names = ['Random Forest', 'Decision Tree', 'Logistic Regression', 'XGBoost']
 
-# Splitting the dataset
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+    for model, name in zip(models, model_names):
+        model.fit(x_train, y_train)
+        y_pred = model.predict(x_test)
 
-# Initialize models
-rf_model = RandomForestClassifier(random_state=42)
-dt_model = DecisionTreeClassifier(random_state=42)
-lr_model = LogisticRegression(max_iter=1000)
-xgb_model = XGBClassifier(use_label_encoder=False, eval_metric='mlogloss')
+        # Calculate metrics
+        accuracy = accuracy_score(y_test, y_pred)
+        precision = precision_score(y_test, y_pred, average='macro')
+        recall = recall_score(y_test, y_pred, average='macro')
+        f1 = f1_score(y_test, y_pred, average='macro')
 
-# Train and evaluate each model
-models = [rf_model, dt_model, lr_model, xgb_model]
-model_names = ['Random Forest', 'Decision Tree', 'Logistic Regression', 'XGBoost']
+        print(f"{name} - Accuracy: {accuracy}, Precision: {precision}, Recall: {recall}, F1 Score: {f1}")
 
-for model, name in zip(models, model_names):
-    model.fit(X_train, y_train)
-    y_pred = model.predict(X_test)
-
-    # Calculate metrics
-    accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred, average='macro')
-    recall = recall_score(y_test, y_pred, average='macro')
-    f1 = f1_score(y_test, y_pred, average='macro')
-
-    print(f"{name} - Accuracy: {accuracy}, Precision: {precision}, Recall: {recall}, F1 Score: {f1}")
-
-# Continue with your RFE steps...
+    print("---------------------------------------------------------------------")
+    # Continue with your RFE steps...
