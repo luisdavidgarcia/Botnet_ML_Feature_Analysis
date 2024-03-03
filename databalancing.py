@@ -4,8 +4,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from imblearn.over_sampling import SMOTE
 from collections import Counter
+from sklearn.preprocessing import StandardScaler
 
-def prepare_balanced_data(df, random_state=42, test_size=0.25):
+def prepare_norm_balanced_data(df, random_state=42, test_size=0.25):
     """ This function prepares the data for training and testing by removing duplicates, unnecessary columns, and cleaning the data.
     Args:
         df: pandas DataFrame 
@@ -13,8 +14,8 @@ def prepare_balanced_data(df, random_state=42, test_size=0.25):
         test_size: float, default=0.25
 
     Returns:
-        x_train: pandas DataFrame
-        x_test: pandas DataFrame
+        x_train_scaled: pandas DataFrame that has been scaled
+        x_test_scaled: pandas DataFrame that has been scaled
         y_train: pandas Series
         y_test: pandas Series
         label_mapping: dict
@@ -61,7 +62,21 @@ def prepare_balanced_data(df, random_state=42, test_size=0.25):
     # Split the dataset into training and testing sets
     x_train, x_test, y_train, y_test = train_test_split(x, y_encoded, test_size=test_size, random_state=random_state)
 
-    return x_train, x_test, y_train, y_test, label_mapping
+    # Initialize the scaler
+    scaler = StandardScaler()
+
+    # Fit on training set only
+    x_train_scaled = scaler.fit_transform(x_train)
+    
+    # Apply transform to both the training set and the test set
+    x_test_scaled = scaler.transform(x_test)
+
+    # Convert arrays back to DataFrame for convenience
+    x_train_scaled = pd.DataFrame(x_train_scaled, columns=x_train.columns, index=x_train.index)
+    x_test_scaled = pd.DataFrame(x_test_scaled, columns=x_test.columns, index=x_test.index)
+    
+    return x_train_scaled, x_test_scaled, y_train, y_test, label_mapping
+
 
 def apply_smote(x_train, y_train, random_state=42, begnin_ratio=0.0):
     """ This function applies SMOTE to the training data to balance the classes.
