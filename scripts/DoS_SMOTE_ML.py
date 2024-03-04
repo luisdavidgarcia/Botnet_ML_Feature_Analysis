@@ -9,6 +9,7 @@ from databalancing import prepare_norm_balanced_data, apply_smote
 from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import learning_curve
 import matplotlib.pyplot as plt
+from sklearn.model_selection import cross_val_score
 
 def plot_learning_curves(model, X, y, model_name, ratio):
     train_sizes, train_scores, test_scores = learning_curve(model, X, y, n_jobs=-1, cv=5, train_sizes=np.linspace(.1, 1.0, 5), verbose=0, random_state=42)
@@ -55,10 +56,11 @@ for benign_ratio in benign_ratios:
     xgb_model = XGBClassifier(use_label_encoder=False, eval_metric='mlogloss')
 
     # Train and evaluate each model
-    models = [rf_model, dt_model, lr_model, xgb_model]
-    model_names = ['Random Forest', 'Decision Tree', 'Logistic Regression', 'XGBoost']
+    model_list = [(rf_model, 'Random Forest'), (dt_model, 'Decision Tree'), 
+              (lr_model, 'Logistic Regression'), (xgb_model, 'XGBoost')]
+    scoring_metrics = ['accuracy', 'precision_macro', 'recall_macro', 'f1_macro']
 
-    for model, name in zip(models, model_names):
+    for model, name in model_list:
         # FIXME: Plot learning curves here for each model
         # plot_learning_curves(model, x_resampled, y_resampled, name, benign_ratio)
 
@@ -73,33 +75,40 @@ for benign_ratio in benign_ratios:
 
         print(f"{name} - Accuracy: {accuracy}, Precision: {precision}, Recall: {recall}, F1 Score: {f1}")
 
-        # Compute confusion matrix
-        cm = confusion_matrix(y_test, y_pred)
+        print(f"Results for {name}:")
+        for metric in scoring_metrics:
+            scores = cross_val_score(model, x_resampled, y_resampled, cv=5, scoring=metric)
+            print(f"Cross-validated {metric} scores: {scores}")
+            print(f"Mean {metric}: {np.mean(scores)}, Standard Deviation {metric}: {np.std(scores)}")
+        print("-------------------------------------------------")
 
-        # For multiclass, calculate metrics per class
-        FP = cm.sum(axis=0) - np.diag(cm)  
-        FN = cm.sum(axis=1) - np.diag(cm)
-        TP = np.diag(cm)
-        TN = cm.sum() - (FP + FN + TP)
+        # # Compute confusion matrix
+        # cm = confusion_matrix(y_test, y_pred)
 
-        # Compute FPR and FNR for each class and store the average if needed
-        FPR = FP / (FP + TN)
-        FNR = FN / (TP + FN)
+        # # For multiclass, calculate metrics per class
+        # FP = cm.sum(axis=0) - np.diag(cm)  
+        # FN = cm.sum(axis=1) - np.diag(cm)
+        # TP = np.diag(cm)
+        # TN = cm.sum() - (FP + FN + TP)
 
-        # Calculate average FPR and FNR across all classes
-        avg_FPR = np.mean(FPR)
-        avg_FNR = np.mean(FNR)
+        # # Compute FPR and FNR for each class and store the average if needed
+        # FPR = FP / (FP + TN)
+        # FNR = FN / (TP + FN)
 
-        # Store results including average FPR and FNR
-        results.append({
-            "Benign Ratio": benign_ratio,
-            "Model": name,
-            "Average FPR": avg_FPR,
-            "Average FNR": avg_FNR
-        })
+        # # Calculate average FPR and FNR across all classes
+        # avg_FPR = np.mean(FPR)
+        # avg_FNR = np.mean(FNR)
+
+        # # Store results including average FPR and FNR
+        # results.append({
+        #     "Benign Ratio": benign_ratio,
+        #     "Model": name,
+        #     "Average FPR": avg_FPR,
+        #     "Average FNR": avg_FNR
+        # })
 
 
-results_df = pd.DataFrame(results)
+# results_df = pd.DataFrame(results)
 
-# Save results to a CSV file
-results_df.to_csv("smote_results.csv", index=False)
+# # Save results to a CSV file
+# results_df.to_csv("smote_results.csv", index=False)
