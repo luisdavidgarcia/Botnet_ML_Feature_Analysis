@@ -78,21 +78,21 @@ def prepare_norm_balanced_data(df, random_state=42, test_size=0.25):
     return x_train_scaled, x_test_scaled, y_train, y_test, label_mapping
 
 
-def apply_smote(x_train, y_train, random_state=42, begnin_ratio=0.0):
+def apply_smote(x_train, y_train, random_state=42, benign_ratio=0.0):
     """ This function applies SMOTE to the training data to balance the classes.
 
     Args:
         x_train: pandas DataFrame
         y_train: pandas Series
         random_state: int, default=42
-        begnin_ratio: float, default=0.0
+        benign_ratio=: float, default=0.0
 
     Returns:
         x_resampled: pandas DataFrame
         y_resampled: pandas Series
     """
 
-    if begnin_ratio == 0.0:
+    if benign_ratio == 0.0:
         smote = SMOTE(random_state=random_state)
         x_resampled, y_resampled = smote.fit_resample(x_train, y_train)
 
@@ -111,7 +111,7 @@ def apply_smote(x_train, y_train, random_state=42, begnin_ratio=0.0):
 
     total_benign = count_labels[0]
     total_samples = len(y_train)
-    total_samples_to_add_to_dos =  (total_benign/begnin_ratio - total_samples)
+    total_samples_to_add_to_dos =  (total_benign/benign_ratio - total_samples)
     desired_samples_goldeneye = int(total_samples_to_add_to_dos * goldeneye_ratio) + count_labels[1]
     desired_samples_slowloris = int(total_samples_to_add_to_dos * slowloris_ratio) + count_labels[2]
 
@@ -126,11 +126,3 @@ def apply_smote(x_train, y_train, random_state=42, begnin_ratio=0.0):
     print(f"Resampled class distribution: {Counter(y_resampled)}")
 
     return x_resampled, y_resampled
-
-if __name__ == "__main__":
-    # Load the dataset
-    df = pd.read_csv("02-15-2018.csv")
-
-    # Prepare balanced data
-    x_train, x_test, y_train, y_test, label_map = prepare_balanced_data(df)
-    x_resampled, y_resampled = apply_smote(x_train, y_train, begnin_ratio=0.8)
