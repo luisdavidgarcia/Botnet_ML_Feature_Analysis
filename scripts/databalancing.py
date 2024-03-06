@@ -6,7 +6,7 @@ from imblearn.over_sampling import SMOTE
 from collections import Counter
 from sklearn.preprocessing import StandardScaler
 
-def prepare_norm_balanced_data(df, random_state=42, test_size=0.25):
+def prepare_norm_balanced_data(df, top_features, random_state=42, test_size=0.25):
     """ This function prepares the data for training and testing by removing duplicates, unnecessary columns, and cleaning the data.
     Args:
         df: pandas DataFrame 
@@ -24,43 +24,36 @@ def prepare_norm_balanced_data(df, random_state=42, test_size=0.25):
     main_df = df.drop_duplicates(keep='first')
     one_value = main_df.columns[main_df.nunique() == 1]
     main_df_2 = main_df.drop(columns=one_value, axis=1)
-
-    # Drop unnecessary columns
     columns_to_drop = ['Timestamp']
     for col in columns_to_drop:
         if col in main_df_2.columns:
             main_df_2 = main_df_2.drop(col, axis=1)
 
-    # Clean data, remove too big of values
     main_df_2 = main_df_2.replace([np.inf, -np.inf], np.nan).dropna()
-
-    # Create a label mapping
     label_mapping = {}
-
-    # Handle the target variable
     if main_df_2['Label'].dtype == 'object':
         le = LabelEncoder()
         main_df_2['Label'] = le.fit_transform(main_df_2['Label'])
-        # Mapping the labels to the encoded values
-        label_mapping = dict(zip(le.classes_, le.transform(le.classes_)))
+        label_mapping = {index: label for index, label in enumerate(le.classes_)}
 
-    # Select features excluding 'object' types and the label
     x = main_df_2.drop('Label', axis=1)
     y = main_df_2['Label']
 
-    # Replace infinity values with NaN in X and then drop any rows with NaN values to clean both X and y together
     x.replace([np.inf, -np.inf], np.nan, inplace=True)
     x.dropna(inplace=True)
-
-    # Ensuring y is aligned with X after dropping rows, before encoding
+    x = x[top_features]
     y = y.loc[x.index]
-
-    # Encoding the labels
     encoder = LabelEncoder()
     y_encoded = encoder.fit_transform(y)
 
-    # Normalize the data and split it into training and testing sets
     x_train_scaled, x_test_scaled, y_train, y_test = normalize_data_and_split(x, y_encoded, random_state=random_state, test_size=test_size)
+
+    print(f"Label mapping: {label_mapping}")
+    label_counts = Counter(y_train)
+    print(f"Label distribution in the training set: {label_counts}")
+    for label, count in sorted(label_counts.items()):
+        print(f"{label}: {count / len(y_train) * 100:.2f}%, {count} samples")
+    print(f"Total samples in the training set: {len(y_train)}")
 
     return x_train_scaled, x_test_scaled, y_train, y_test, label_mapping
 

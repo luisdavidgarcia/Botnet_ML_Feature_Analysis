@@ -14,129 +14,6 @@ from scipy.stats import wilcoxon
 import itertools
 from sklearn.model_selection import cross_validate
 
-'''
-# def plot_learning_curves(model, X, y, model_name, ratio):
-#     train_sizes, train_scores, test_scores = learning_curve(model, X, y, n_jobs=-1, cv=5, train_sizes=np.linspace(.1, 1.0, 5), verbose=0, random_state=42)
-#     train_scores_mean = np.mean(train_scores, axis=1)
-#     test_scores_mean = np.mean(test_scores, axis=1)
-    
-#     plt.figure()
-#     plt.xlabel("Training examples")
-#     plt.ylabel("Score")
-#     plt.plot(train_sizes, train_scores_mean, 'o-', color="r", label="Training score")
-#     plt.plot(train_sizes, test_scores_mean, 'o-', color="g", label="Cross-validation score")
-#     plt.title(f"Learning Curve: {model_name}, Ratio {ratio}")
-#     plt.legend(loc="best")
-#     plt.grid()
-    
-#     # Save the plot to a file
-#     plt.savefig(f"learning_curve_{model_name}_ratio_{ratio}.png")
-#     plt.close()  # Close the plot to free memory
-
-
-# # Load the dataset
-# df = pd.read_csv('02-15-2018.csv')
-# x_train_norm, x_test_norm, y_train, y_test, label_map = prepare_norm_balanced_data(df)
-
-# # Benign Ratio Ranges
-# benign_ratios = [0.5, 0.7, 0.8]
-
-# # Store results
-# results = []
-
-# # Initialize a dictionary to store cross-validated scores
-# cv_scores = {
-#     'Random Forest': [],
-#     'Decision Tree': [],
-#     'Logistic Regression': [],
-#     'XGBoost': []
-# }
-
-# # Train and evaluate models for each benign ratio using SMOTE (synthetic data)
-# for benign_ratio in benign_ratios:
-#     print("---------------------------------------------------------------------")
-#     print(f"Applying SMOTE with benign ratio: {benign_ratio}")
-#     x_resampled, y_resampled = apply_smote(x_train_norm, y_train, begnin_ratio=benign_ratio)
-
-#     print(f"Len of x_train_norm: {len(x_train_norm)} and len of x_resampled: {len(x_resampled)}")
-#     print("---------------------------------------------------------------------")
-
-#     # Initialize models
-#     rf_model = RandomForestClassifier(random_state=42)
-#     dt_model = DecisionTreeClassifier(random_state=42)
-#     lr_model = LogisticRegression(max_iter=1000)
-#     xgb_model = XGBClassifier(use_label_encoder=False, eval_metric='mlogloss')
-
-#     # Train and evaluate each model
-#     model_list = [(rf_model, 'Random Forest'), (dt_model, 'Decision Tree'), 
-#               (lr_model, 'Logistic Regression'), (xgb_model, 'XGBoost')]
-#     scoring_metrics = ['accuracy', 'precision_macro', 'recall_macro', 'f1_macro']
-
-#     for model, name in model_list:
-#         # FIXME: Plot learning curves here for each model
-#         # plot_learning_curves(model, x_resampled, y_resampled, name, benign_ratio)
-
-#         # Instead of fitting here, calculate cross-validated scores
-#         accuracy_scores = cross_val_score(model, x_resampled, y_resampled, cv=5, scoring='accuracy')
-        
-#         # Store the mean accuracy score
-#         cv_scores[name].append(np.mean(accuracy_scores))
-
-#         model.fit(x_resampled, y_resampled)
-#         y_pred = model.predict(x_test_norm)
-
-#         # Calculate metrics
-#         accuracy = accuracy_score(y_test, y_pred)
-#         precision = precision_score(y_test, y_pred, average='macro')
-#         recall = recall_score(y_test, y_pred, average='macro')
-#         f1 = f1_score(y_test, y_pred, average='macro')
-
-#         print(f"{name} - Accuracy: {accuracy}, Precision: {precision}, Recall: {recall}, F1 Score: {f1}")
-
-#         print(f"Results for {name}:")
-#         for metric in scoring_metrics:
-#             scores = cross_val_score(model, x_resampled, y_resampled, cv=5, scoring=metric)
-#             print(f"Cross-validated {metric} scores: {scores}")
-#             print(f"Mean {metric}: {np.mean(scores)}, Standard Deviation {metric}: {np.std(scores)}")
-#         print("-------------------------------------------------")
-
-#         # # Compute confusion matrix
-#         # cm = confusion_matrix(y_test, y_pred)
-
-#         # # For multiclass, calculate metrics per class
-#         # FP = cm.sum(axis=0) - np.diag(cm)  
-#         # FN = cm.sum(axis=1) - np.diag(cm)
-#         # TP = np.diag(cm)
-#         # TN = cm.sum() - (FP + FN + TP)
-
-#         # # Compute FPR and FNR for each class and store the average if needed
-#         # FPR = FP / (FP + TN)
-#         # FNR = FN / (TP + FN)
-
-#         # # Calculate average FPR and FNR across all classes
-#         # avg_FPR = np.mean(FPR)
-#         # avg_FNR = np.mean(FNR)
-
-#         # # Store results including average FPR and FNR
-#         # results.append({
-#         #     "Benign Ratio": benign_ratio,
-#         #     "Model": name,
-#         #     "Average FPR": avg_FPR,
-#         #     "Average FNR": avg_FNR
-#         # })
-
-
-# # results_df = pd.DataFrame(results)
-
-# # # Save results to a CSV file
-# # results_df.to_csv("smote_results.csv", index=False)
-
-# # After evaluating all models, perform Wilcoxon signed-rank tests between models
-# # Example: Comparing Random Forest and Decision Tree
-# rf_accuracy = cv_scores['Random Forest']
-# dt_accuracy = cv_scores['Decision Tree']
-'''
-
 def wilcoxon_signed_rank_test(cv_scores, pair_items=2):
     # Step 1: Generate all unique pairs of models for comparison
     model_pairs = list(itertools.combinations(cv_scores.keys(), pair_items))
@@ -170,56 +47,56 @@ def k_cross_validation(models, x_train, y_train, cv=5):
         print(f"{name} - Cross-validated recall_macro scores: {cv_results['test_recall_macro']}")
         print(f"{name} - Cross-validated f1_macro scores: {cv_results['test_f1_macro']}")
 
-if __name__ == "__main__":
-    # Load the dataset
-    df = pd.read_csv('data/combined.csv')
-    x_train_norm, x_test_norm, y_train, y_test, label_map = prepare_norm_balanced_data(df)
-
-    # Print out the data types of x_train_norm
-    for col in x_train_norm.columns:
-        print(f"{col}: {x_train_norm[col].dtype}")
-
-    # Benign Ratio Ranges
-    # benign_ratios = [0.5, 0.7, 0.8]
-
-    # # Initialize a dictionary to store cross-validated scores
-    # cv_scores = {'Random Forest': [], 'Decision Tree': [], 'Logistic Regression': [], 'XGBoost': []}
-
-    # Initialize models
-    # models = {
-    #     'Random Forest': RandomForestClassifier(random_state=42),
-    #     'Decision Tree': DecisionTreeClassifier(random_state=42),
-    #     'Logistic Regression': LogisticRegression(max_iter=1000),
-    #     'XGBoost': XGBClassifier(use_label_encoder=False, eval_metric='mlogloss')
-    # }
-
+def top_features_xgboost(x_train_norm, y_train, num_features=20):
     # Feature importance using XGBoost only on the original data (Preprocessed)
     xgb_model = XGBClassifier(use_label_encoder=False, eval_metric='mlogloss')
     xgb_model.fit(x_train_norm, y_train)
 
-    importances = xgb_model.feature_importances_
+    # Get the feature scores as a dictionary
+    f_score = xgb_model.get_booster().get_score(importance_type='weight')
+    sorted_f_score = sorted(f_score.items(), key=lambda kv: kv[1], reverse=True)[:num_features]
+    top_features = [feature for feature, _ in sorted_f_score]
+    print(top_features)
 
-    # Summarize feature importances
-    for i,v in enumerate(importances):
-        print('Feature: %0d, Score: %.5f' % (i,v))
+    # Plot feature importances
+    plt.figure(figsize=(10, 15))  # Adjust the size as needed
+    plot_importance(xgb_model, height=0.8, ax=plt.gca(), importance_type='weight', max_num_features=num_features)
 
-    # # Plot feature importances
-    # plot_importance(xgb_model)
-    # plt.show()
+    # Save the plot to a file with high resolution
+    plt.savefig("plots/top_feature_importances.png", dpi=300, bbox_inches='tight')
+
+def smote_training(models, x_train_norm, y_train):
+    # Benign Ratio Ranges
+    benign_ratios = [0.5, 0.7, 0.8]
 
     # Loop through each benign ratio
-    # for benign_ratio in benign_ratios:
-        # print(f"\nApplying SMOTE with benign ratio: {benign_ratio}")
-        #x_resampled, y_resampled = apply_smote(x_train_norm, y_train, benign_ratio=benign_ratio)
+    for benign_ratio in benign_ratios:
+        print(f"\nApplying SMOTE with benign ratio: {benign_ratio}")
+        x_resampled, y_resampled = apply_smote(x_train_norm, y_train, benign_ratio=benign_ratio)
 
         # Evaluate each model using cross-validation and display detailed metrics
+        k_cross_validation(models, x_resampled, y_resampled, cv=5)
     
-    # Print out the label distribution in percentage using label_map to decode the labels
-    # print("Label distribution in percentage for processed data:")
-    # for label, count in zip(label_map.keys(), label_map.values()):
-    #     print(f"{label}: {count / len(y_train) * 100:.2f}%")
+if __name__ == "__main__":
+    top_features = [
+        'Init Fwd Win Byts', 'Dst Port', 'Fwd Seg Size Min', 'Fwd IAT Min', 
+        'Flow IAT Min', 'Flow Duration', 'FIN Flag Cnt', 'Fwd Header Len', 
+        'Bwd Pkt Len Std', 'Flow IAT Mean', 'Fwd Pkts/s', 'TotLen Bwd Pkts', 
+        'Init Bwd Win Byts', 'Bwd IAT Mean', 'TotLen Fwd Pkts', 'Fwd Pkt Len Max', 
+        'Bwd Pkts/s', 'Flow IAT Max', 'Flow Byts/s', 'Bwd Pkt Len Mean'
+    ]
 
-    # # Test with original data
-    # k_cross_validation(models, x_train_norm, y_train, cv=5)
+    df = pd.read_csv('data/cleaned_combined.csv')
+    x_train_norm, x_test_norm, y_train, y_test, label_map = prepare_norm_balanced_data(df, top_features)
 
+    # Initialize models
+    models = {
+        'Random Forest': RandomForestClassifier(random_state=42),
+        'Decision Tree': DecisionTreeClassifier(random_state=42),
+        'Logistic Regression': LogisticRegression(max_iter=1000),
+        'XGBoost': XGBClassifier(use_label_encoder=False, eval_metric='mlogloss')
+    }
+
+    # Cross-validate the models using the original data
+    k_cross_validation(models, x_train_norm, y_train, cv=5)
 

@@ -5,5 +5,7 @@ __pycache__/
 *.png
 *.jpg
 *.jpeg
-*.txt
 *.DS_Store
+results/
+plots/
+data/
