@@ -13,6 +13,10 @@ from sklearn.model_selection import cross_val_score
 from scipy.stats import wilcoxon
 import itertools
 from sklearn.model_selection import cross_validate
+import time
+from sklearn.metrics import log_loss
+import os
+from collections import Counter
 
 def wilcoxon_signed_rank_test(cv_scores, pair_items=2):
     # Step 1: Generate all unique pairs of models for comparison
@@ -34,18 +38,108 @@ def wilcoxon_signed_rank_test(cv_scores, pair_items=2):
 
 def k_cross_validation(models, x_train, y_train, cv=5):
     # Scoring functions to use
-    scoring = {'accuracy': make_scorer(accuracy_score),
-           'precision_macro': make_scorer(precision_score, average='macro'),
-           'recall_macro': make_scorer(recall_score, average='macro'),
-           'f1_macro': make_scorer(f1_score, average='macro')}
+    scoring = {
+        'accuracy': make_scorer(accuracy_score),
+        'precision_macro': make_scorer(precision_score, average='macro'),
+        'recall_macro': make_scorer(recall_score, average='macro'),
+        'f1_macro': make_scorer(f1_score, average='macro')
+    }
+    
+    # Prepare a dictionary to store all results
+    all_results = {}
     
     # Evaluate each model using cross-validation and display detailed metrics
     for name, model in models.items():
-        cv_results = cross_validate(model, x_train, y_train, cv=cv, scoring=scoring)
-        print(f"{name} - Cross-validated accuracy scores: {cv_results['test_accuracy']}")
-        print(f"{name} - Cross-validated precision_macro scores: {cv_results['test_precision_macro']}")
-        print(f"{name} - Cross-validated recall_macro scores: {cv_results['test_recall_macro']}")
-        print(f"{name} - Cross-validated f1_macro scores: {cv_results['test_f1_macro']}")
+        start_time = time.time()  # Start time measurement
+        cv_results = cross_validate(model, x_train, y_train, cv=cv, scoring=scoring, return_train_score=True)
+        end_time = time.time()  # End time measurement
+        duration = end_time - start_time  # Calculate the training duration
+        
+        # Store results in a dictionary
+        all_results[name] = cv_results
+        all_results[name]['fit_time'] = duration  # Store the duration
+        
+        # Save the results to a CSV file
+        results_df = pd.DataFrame(cv_results)
+        results_df.to_csv(f"results/{name}_cv_results.csv", index=False)
+
+
+        # # Print the results
+        # print(f"{name} - Cross-validated scores:")
+        # for key, value in cv_results.items():
+        #     if key.startswith('test_'):
+        #         metric_name = key.split('_', 1)[1]
+        #         print(f"  {metric_name.capitalize()} - Mean: {np.mean(value):.6f}, Std: {np.std(value):.6f}")
+        # print(f"  Training Time: {duration:.3f} seconds")
+        # print("-------------------------------------------------")
+    
+    # Return the dictionary with all results for further analysis if needed
+    return all_results
+
+def plot_model_learning_curve(model, name, x_train, y_train, x_test, y_test, cv, train_sizes):
+    """
+    Plots the learning curve for a given model. Handles special case for XGBoost.
+    """
+    plt.figure(figsize=(8, 6))
+    plt.title(f"Learning Curve: {name}")
+    plt.xlabel("Training examples")
+    plt.ylabel("Score")
+
+    if name == 'XGBoost':
+        plot_xgboost_learning_curve(model, x_train, y_train, x_test, y_test)
+    else:
+        plot_standard_model_learning_curve(model, x_train, y_train, cv, train_sizes)
+
+    save_plot(name)
+
+def plot_xgboost_learning_curve(model, x_train, y_train, x_test, y_test, metric='mlogloss'):
+    eval_set = [(x_train, y_train), (x_test, y_test)]
+    model.fit(x_train, y_train, eval_set=eval_set)
+    
+    results = model.evals_result()
+    print(results['validation_0'].keys())
+    epochs = len(results['validation_0'][metric])  
+    x_axis = range(0, epochs)
+
+    plt.plot(x_axis, results['validation_0'][metric], label='Train')  
+    plt.plot(x_axis, results['validation_1'][metric], label='Validation')  
+    plt.legend()
+    plt.ylabel('Log Loss')
+    plt.title('XGBoost Log Loss')
+
+def plot_standard_model_learning_curve(model, x_train, y_train, cv, train_sizes):
+    train_sizes, train_scores, test_scores = learning_curve(
+        model, x_train, y_train, cv=cv, n_jobs=-1, train_sizes=train_sizes)
+    
+    train_scores_mean = np.mean(train_scores, axis=1)
+    train_scores_std = np.std(train_scores, axis=1)
+    test_scores_mean = np.mean(test_scores, axis=1)
+    test_scores_std = np.std(test_scores, axis=1)
+
+    plt.grid()
+    plt.fill_between(train_sizes, train_scores_mean - train_scores_std, 
+                     train_scores_mean + train_scores_std, alpha=0.1, color="r")
+    plt.fill_between(train_sizes, test_scores_mean - test_scores_std, 
+                     test_scores_mean + test_scores_std, alpha=0.1, color="g")
+    plt.plot(train_sizes, train_scores_mean, 'o-', color="r", label="Training score")
+    plt.plot(train_sizes, test_scores_mean, 'o-', color="g", label="Cross-validation score")
+
+    plt.legend(loc="best")
+
+def save_plot(name):
+    """
+    Saves the plot to a directory specific to the model name.
+    """
+    model_dir = f"plots/learning_curves/{name.replace(' ', '_')}"
+    os.makedirs(model_dir, exist_ok=True)
+    
+    plot_path = f"{model_dir}/{name.replace(' ', '_')}_learning_curve.png"
+    plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+    plt.close()
+
+def plot_learning_curve(models, x_train, y_train, x_test, y_test, cv=5, train_sizes=np.linspace(0.1, 1.0, 5)):
+    for name, model in models.items():
+        plot_model_learning_curve(model, name, x_train, y_train, x_test, y_test, cv, train_sizes)
 
 def top_features_xgboost(x_train_norm, y_train, num_features=20):
     # Feature importance using XGBoost only on the original data (Preprocessed)
@@ -76,6 +170,61 @@ def smote_training(models, x_train_norm, y_train):
 
         # Evaluate each model using cross-validation and display detailed metrics
         k_cross_validation(models, x_resampled, y_resampled, cv=5)
+
+def label_distribution_csv(y_train, label_mapping):
+    """ This function plots a bar chart of the label distribution.
+    Args:
+        y_train: pandas Series or numpy array, training labels
+        label_mapping: dict, a mapping of encoded labels to original labels
+
+    Returns:
+        None
+    """
+    label_counts = Counter(y_train)
+
+    labels = [label_mapping.get(label, label) for label in label_counts.keys()]
+    data = {
+        "Label ID": label_counts.keys(),
+        "Description": labels,
+        "Count": label_counts.values(),
+        "Percentage": [f"{(count / sum(label_counts.values())) * 100:.2f}%" for count in label_counts.values()],
+    }
+
+    df_table = pd.DataFrame(data)
+    df_table = df_table.sort_values(by="Label ID").reset_index(drop=True)
+    total_row = pd.DataFrame({'Label ID': '-', 'Description': 'Total',
+                            'Count': df_table['Count'].sum(), 'Percentage': '100%'}, index=[0])
+    df_table = pd.concat([df_table, total_row], ignore_index=True)
+
+    # Save to CSV
+    df_table.to_csv("label_distribution_table.csv", index=False)
+
+    # Save the figure
+    os.makedirs('results/data_distribution', exist_ok=True)
+    df_table.to_csv('results/data_distribution/label_distribution.csv', index=False)
+
+def save_original_raw_data(df):
+    """ This function saves the original raw data to a CSV file.
+    Args:
+        df: pandas DataFrame, the original raw data
+
+    Returns:
+        None
+    """
+    label_counter = Counter(df['Label'])
+
+    # Prepare data for saving
+    label_counts = pd.DataFrame.from_dict(label_counter, orient='index', columns=['Count'])
+    label_counts.index.name = 'Label'
+    label_counts.reset_index(inplace=True)
+    label_counts['Percentage'] = (label_counts['Count'] / label_counts['Count'].sum()) * 100
+
+    # Create the output directory if it doesn't exist
+    os.makedirs('results/data_distribution', exist_ok=True)
+
+    # Save the label distribution to a CSV file
+    label_counts.to_csv('results/data_distribution/raw_label_distribution.csv', index=False) 
+
     
 if __name__ == "__main__":
     top_features = [
@@ -87,16 +236,20 @@ if __name__ == "__main__":
     ]
 
     df = pd.read_csv('data/cleaned_combined.csv')
-    x_train_norm, x_test_norm, y_train, y_test, label_map = prepare_norm_balanced_data(df, top_features)
 
-    # Initialize models
+    x_train_norm, x_test_norm, y_train, y_test, label_map = prepare_norm_balanced_data(df, top_features, remove_duplicates=False)
+
+    # # Initialize models
     models = {
         'Random Forest': RandomForestClassifier(random_state=42),
         'Decision Tree': DecisionTreeClassifier(random_state=42),
         'Logistic Regression': LogisticRegression(max_iter=1000),
-        'XGBoost': XGBClassifier(use_label_encoder=False, eval_metric='mlogloss')
+        'XGBoost': XGBClassifier(use_label_encoder=False, eval_metric='mlogloss', early_stopping_rounds=10)
     }
 
     # Cross-validate the models using the original data
     k_cross_validation(models, x_train_norm, y_train, cv=5)
 
+    # Plot learning curves for each model
+    # plot_learning_curve(models, x_train_norm, y_train, x_test_norm, y_test, cv=5)
+    

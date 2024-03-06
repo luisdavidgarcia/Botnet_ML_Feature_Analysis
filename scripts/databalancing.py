@@ -6,90 +6,62 @@ from imblearn.over_sampling import SMOTE
 from collections import Counter
 from sklearn.preprocessing import StandardScaler
 
-def prepare_norm_balanced_data(df, top_features, random_state=42, test_size=0.25):
-    """ This function prepares the data for training and testing by removing duplicates, unnecessary columns, and cleaning the data.
-    Args:
-        df: pandas DataFrame 
-        random_state: int, default=42
-        test_size: float, default=0.25
-
-    Returns:
-        x_train_scaled: pandas DataFrame that has been scaled
-        x_test_scaled: pandas DataFrame that has been scaled
-        y_train: pandas Series
-        y_test: pandas Series
-        label_mapping: dict
-    """
-
-    main_df = df.drop_duplicates(keep='first')
-    one_value = main_df.columns[main_df.nunique() == 1]
-    main_df_2 = main_df.drop(columns=one_value, axis=1)
-    columns_to_drop = ['Timestamp']
-    for col in columns_to_drop:
-        if col in main_df_2.columns:
-            main_df_2 = main_df_2.drop(col, axis=1)
-
-    main_df_2 = main_df_2.replace([np.inf, -np.inf], np.nan).dropna()
-    label_mapping = {}
-    if main_df_2['Label'].dtype == 'object':
-        le = LabelEncoder()
-        main_df_2['Label'] = le.fit_transform(main_df_2['Label'])
-        label_mapping = {index: label for index, label in enumerate(le.classes_)}
-
-    x = main_df_2.drop('Label', axis=1)
-    y = main_df_2['Label']
-
-    x.replace([np.inf, -np.inf], np.nan, inplace=True)
-    x.dropna(inplace=True)
-    x = x[top_features]
-    y = y.loc[x.index]
-    encoder = LabelEncoder()
-    y_encoded = encoder.fit_transform(y)
-
-    x_train_scaled, x_test_scaled, y_train, y_test = normalize_data_and_split(x, y_encoded, random_state=random_state, test_size=test_size)
-
-    print(f"Label mapping: {label_mapping}")
-    label_counts = Counter(y_train)
-    print(f"Label distribution in the training set: {label_counts}")
-    for label, count in sorted(label_counts.items()):
-        print(f"{label}: {count / len(y_train) * 100:.2f}%, {count} samples")
-    print(f"Total samples in the training set: {len(y_train)}")
-
-    return x_train_scaled, x_test_scaled, y_train, y_test, label_mapping
-
-def normalize_data_and_split(x, y, random_state=42, test_size=0.25):
-    """ This function normalizes the data and splits it into training and testing sets.
+def prepare_norm_balanced_data(df, top_features, random_state=42, test_size=0.25, remove_duplicates=True, modify_inplace=True):
+    """ Prepares the data for training and testing.
 
     Args:
-        x: pandas DataFrame
-        y: pandas Series
-        random_state: int, default=42
-        test_size: float, default=0.25
+        df: pandas DataFrame.
+        top_features: List of top features to select.
+        random_state: int, default=42.
+        test_size: float, default=0.25.
+        remove_duplicates: bool, default=True.
+        modify_inplace: bool, default=False. If True, modifies the DataFrame in-place.
 
     Returns:
-        x_train_scaled: pandas DataFrame
-        x_test_scaled: pandas DataFrame
-        y_train: pandas Series
-        y_test: pandas Series
+        x_train_scaled: pandas DataFrame (scaled training data).
+        x_test_scaled: pandas DataFrame (scaled testing data).
+        y_train: pandas Series (training labels).
+        y_test: pandas Series (testing labels).
+        label_mapping: dict (label encoding mapping).
     """
 
-    # Initialize the scaler
+    if not modify_inplace:
+        df = df.copy()  # Work on a copy if in-place modification is not desired
+
+    # Data Cleaning
+    if remove_duplicates:
+        df.drop_duplicates(keep='first', inplace=True)
+
+    df.dropna(subset=['Label'], inplace=True) 
+    df.replace([np.inf, -np.inf], np.nan, inplace=True)
+    df.dropna(inplace=True)
+
+    # Columns to Remove 
+    cols_to_drop = ['Timestamp'] + df.columns[df.nunique() == 1].tolist()
+    df.drop(columns=cols_to_drop, inplace=True) 
+
+    # Label Encoding
+    if df['Label'].dtype == 'object':
+        label_encoder = LabelEncoder()
+        df['Label'] = label_encoder.fit_transform(df['Label'])
+        label_mapping = {idx: label for idx, label in enumerate(label_encoder.classes_)}
+    else:
+        label_mapping = None
+
+    # Feature Selection and Data Split
+    X = df[top_features]
+    y = df['Label']
+
+    # Normalization and Split
+    x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state, stratify=y)
     scaler = StandardScaler()
-
-    # Split the dataset into training and testing sets
-    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=test_size, random_state=random_state)
-
-    # Fit on training set only
     x_train_scaled = scaler.fit_transform(x_train)
-    
-    # Apply transform to both the training set and the test set
     x_test_scaled = scaler.transform(x_test)
 
-    # Convert arrays back to DataFrame for convenience
-    x_train_scaled = pd.DataFrame(x_train_scaled, columns=x_train.columns, index=x_train.index)
-    x_test_scaled = pd.DataFrame(x_test_scaled, columns=x_test.columns, index=x_test.index)
-    
-    return x_train_scaled, x_test_scaled, y_train, y_test
+    return pd.DataFrame(x_train_scaled, columns=x_train.columns, index=x_train.index), \
+           pd.DataFrame(x_test_scaled, columns=x_test.columns, index=x_test.index), \
+           y_train, y_test, label_mapping
+
 
 def apply_smote(x_train, y_train, random_state=42, benign_ratio=0.0):
     """ This function applies SMOTE to the training data to balance the classes.
