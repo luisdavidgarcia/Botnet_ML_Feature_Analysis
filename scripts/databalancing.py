@@ -59,11 +59,32 @@ def prepare_norm_balanced_data(df, random_state=42, test_size=0.25):
     encoder = LabelEncoder()
     y_encoded = encoder.fit_transform(y)
 
-    # Split the dataset into training and testing sets
-    x_train, x_test, y_train, y_test = train_test_split(x, y_encoded, test_size=test_size, random_state=random_state)
+    # Normalize the data and split it into training and testing sets
+    x_train_scaled, x_test_scaled, y_train, y_test = normalize_data_and_split(x, y_encoded, random_state=random_state, test_size=test_size)
+
+    return x_train_scaled, x_test_scaled, y_train, y_test, label_mapping
+
+def normalize_data_and_split(x, y, random_state=42, test_size=0.25):
+    """ This function normalizes the data and splits it into training and testing sets.
+
+    Args:
+        x: pandas DataFrame
+        y: pandas Series
+        random_state: int, default=42
+        test_size: float, default=0.25
+
+    Returns:
+        x_train_scaled: pandas DataFrame
+        x_test_scaled: pandas DataFrame
+        y_train: pandas Series
+        y_test: pandas Series
+    """
 
     # Initialize the scaler
     scaler = StandardScaler()
+
+    # Split the dataset into training and testing sets
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=test_size, random_state=random_state)
 
     # Fit on training set only
     x_train_scaled = scaler.fit_transform(x_train)
@@ -75,8 +96,7 @@ def prepare_norm_balanced_data(df, random_state=42, test_size=0.25):
     x_train_scaled = pd.DataFrame(x_train_scaled, columns=x_train.columns, index=x_train.index)
     x_test_scaled = pd.DataFrame(x_test_scaled, columns=x_test.columns, index=x_test.index)
     
-    return x_train_scaled, x_test_scaled, y_train, y_test, label_mapping
-
+    return x_train_scaled, x_test_scaled, y_train, y_test
 
 def apply_smote(x_train, y_train, random_state=42, benign_ratio=0.0):
     """ This function applies SMOTE to the training data to balance the classes.

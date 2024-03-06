@@ -3,7 +3,7 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.linear_model import LogisticRegression
-from xgboost import XGBClassifier
+from xgboost import XGBClassifier, plot_importance
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, make_scorer
 from databalancing import prepare_norm_balanced_data, apply_smote
 from sklearn.metrics import confusion_matrix
@@ -14,6 +14,7 @@ from scipy.stats import wilcoxon
 import itertools
 from sklearn.model_selection import cross_validate
 
+'''
 # def plot_learning_curves(model, X, y, model_name, ratio):
 #     train_sizes, train_scores, test_scores = learning_curve(model, X, y, n_jobs=-1, cv=5, train_sizes=np.linspace(.1, 1.0, 5), verbose=0, random_state=42)
 #     train_scores_mean = np.mean(train_scores, axis=1)
@@ -134,6 +135,7 @@ from sklearn.model_selection import cross_validate
 # # Example: Comparing Random Forest and Decision Tree
 # rf_accuracy = cv_scores['Random Forest']
 # dt_accuracy = cv_scores['Decision Tree']
+'''
 
 def wilcoxon_signed_rank_test(cv_scores, pair_items=2):
     # Step 1: Generate all unique pairs of models for comparison
@@ -170,25 +172,54 @@ def k_cross_validation(models, x_train, y_train, cv=5):
 
 if __name__ == "__main__":
     # Load the dataset
-    df = pd.read_csv('data/raw/02-15-2018.csv')
+    df = pd.read_csv('data/combined.csv')
     x_train_norm, x_test_norm, y_train, y_test, label_map = prepare_norm_balanced_data(df)
 
-    # Benign Ratio Ranges
-    benign_ratios = [0.5, 0.7, 0.8]
+    # Print out the data types of x_train_norm
+    for col in x_train_norm.columns:
+        print(f"{col}: {x_train_norm[col].dtype}")
 
-    # Initialize a dictionary to store cross-validated scores
-    cv_scores = {'Random Forest': [], 'Decision Tree': [], 'Logistic Regression': [], 'XGBoost': []}
+    # Benign Ratio Ranges
+    # benign_ratios = [0.5, 0.7, 0.8]
+
+    # # Initialize a dictionary to store cross-validated scores
+    # cv_scores = {'Random Forest': [], 'Decision Tree': [], 'Logistic Regression': [], 'XGBoost': []}
 
     # Initialize models
-    models = {
-        'Random Forest': RandomForestClassifier(random_state=42),
-        'Decision Tree': DecisionTreeClassifier(random_state=42),
-        'Logistic Regression': LogisticRegression(max_iter=1000),
-        'XGBoost': XGBClassifier(use_label_encoder=False, eval_metric='mlogloss')
-    }
+    # models = {
+    #     'Random Forest': RandomForestClassifier(random_state=42),
+    #     'Decision Tree': DecisionTreeClassifier(random_state=42),
+    #     'Logistic Regression': LogisticRegression(max_iter=1000),
+    #     'XGBoost': XGBClassifier(use_label_encoder=False, eval_metric='mlogloss')
+    # }
+
+    # Feature importance using XGBoost only on the original data (Preprocessed)
+    xgb_model = XGBClassifier(use_label_encoder=False, eval_metric='mlogloss')
+    xgb_model.fit(x_train_norm, y_train)
+
+    importances = xgb_model.feature_importances_
+
+    # Summarize feature importances
+    for i,v in enumerate(importances):
+        print('Feature: %0d, Score: %.5f' % (i,v))
+
+    # # Plot feature importances
+    # plot_importance(xgb_model)
+    # plt.show()
 
     # Loop through each benign ratio
-    for benign_ratio in benign_ratios:
-        print(f"\nApplying SMOTE with benign ratio: {benign_ratio}")
-        x_resampled, y_resampled = apply_smote(x_train_norm, y_train, benign_ratio=benign_ratio)
+    # for benign_ratio in benign_ratios:
+        # print(f"\nApplying SMOTE with benign ratio: {benign_ratio}")
+        #x_resampled, y_resampled = apply_smote(x_train_norm, y_train, benign_ratio=benign_ratio)
+
+        # Evaluate each model using cross-validation and display detailed metrics
+    
+    # Print out the label distribution in percentage using label_map to decode the labels
+    # print("Label distribution in percentage for processed data:")
+    # for label, count in zip(label_map.keys(), label_map.values()):
+    #     print(f"{label}: {count / len(y_train) * 100:.2f}%")
+
+    # # Test with original data
+    # k_cross_validation(models, x_train_norm, y_train, cv=5)
+
 
