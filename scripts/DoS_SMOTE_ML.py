@@ -85,9 +85,10 @@ def plot_xgboost_learning_curve(model, x_train, y_train, x_test, y_test, metric=
     epochs = len(results['validation_0'][metric])  
     x_axis = range(0, epochs)
 
-    plt.plot(x_axis, results['validation_0'][metric], label='Train')  
-    plt.plot(x_axis, results['validation_1'][metric], label='Validation')  
-    plt.legend()
+    plt.grid()
+    plt.plot(x_axis, results['validation_0'][metric], 'o-', color="r", label='Train')  
+    plt.plot(x_axis, results['validation_1'][metric], 'o-', color="g", label='Validation')  
+    plt.legend(loc="best")
     plt.ylabel('Log Loss')
     plt.title('XGBoost Log Loss')
 

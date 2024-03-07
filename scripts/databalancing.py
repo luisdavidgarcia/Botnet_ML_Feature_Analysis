@@ -89,19 +89,15 @@ def apply_smote(x_train, y_train, random_state=42, benign_ratio=0.0):
 
     # Calculate the desired number of samples for each class
     count_labels = Counter(y_train)
-    
-    dos_labels_sum = count_labels[1] + count_labels[2]
-    goldeneye_ratio = count_labels[1] / dos_labels_sum
-    slowloris_ratio = count_labels[2] / dos_labels_sum
-
     total_benign = count_labels[0]
     total_samples = len(y_train)
     total_samples_to_add_to_dos =  (total_benign/benign_ratio - total_samples)
-    desired_samples_goldeneye = int(total_samples_to_add_to_dos * goldeneye_ratio) + count_labels[1]
-    desired_samples_slowloris = int(total_samples_to_add_to_dos * slowloris_ratio) + count_labels[2]
+    total_attacks = total_samples - total_benign
+    attack_ratios = {label: count/total_attacks for label, count in count_labels.items() if label != 0}
+    desired_attack_samples = {label: int(total_samples_to_add_to_dos * attack_ratios[label]) + count_labels[label] for label in attack_ratios.keys()}
 
     # Applying SMOTE
-    smote = SMOTE(random_state=random_state, sampling_strategy={1: desired_samples_goldeneye, 2: desired_samples_slowloris})
+    smote = SMOTE(random_state=random_state, sampling_strategy=desired_attack_samples)
     x_resampled, y_resampled = smote.fit_resample(x_train, y_train)
 
     # Checking the class distribution
@@ -109,5 +105,11 @@ def apply_smote(x_train, y_train, random_state=42, benign_ratio=0.0):
     print(f"Original class distribution: {Counter(y_train)}")
     print(f"Total samples in the resampled set: {len(y_resampled)}")
     print(f"Resampled class distribution: {Counter(y_resampled)}")
+
+    # Output the desired attack samples
+    print(f"Desired attack samples: {desired_attack_samples}")
+    print(f"Attack ratios: {attack_ratios}")
+    print("Total attacks before: ", total_attacks)
+    print("Total samples to add to DOS: ", total_samples_to_add_to_dos)
 
     return x_resampled, y_resampled
