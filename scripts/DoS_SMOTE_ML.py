@@ -3,6 +3,7 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.linear_model import LogisticRegression
+import xgboost as xgb
 from xgboost import XGBClassifier, plot_importance
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, make_scorer
 from databalancing import prepare_norm_balanced_data, apply_smote
@@ -36,45 +37,28 @@ def wilcoxon_signed_rank_test(cv_scores, pair_items=2):
         else:
             print(f'Significant difference between {model1} and {model2} models (reject H0)')
 
-def k_cross_validation(models, x_train, y_train, cv=5):
-    # Scoring functions to use
+def k_cross_validation(models, x_train, y_train, cv=5, benign_ratio=0.0):
     scoring = {
         'accuracy': make_scorer(accuracy_score),
         'precision_macro': make_scorer(precision_score, average='macro'),
         'recall_macro': make_scorer(recall_score, average='macro'),
         'f1_macro': make_scorer(f1_score, average='macro')
     }
-    
-    # Prepare a dictionary to store all results
-    all_results = {}
-    
-    # Evaluate each model using cross-validation and display detailed metrics
+
+    all_results = {}  # Store results for the current benign ratio
+
     for name, model in models.items():
-        start_time = time.time()  # Start time measurement
         cv_results = cross_validate(model, x_train, y_train, cv=cv, scoring=scoring, return_train_score=True)
-        end_time = time.time()  # End time measurement
-        duration = end_time - start_time  # Calculate the training duration
-        
-        # Store results in a dictionary
-        all_results[name] = cv_results
-        all_results[name]['fit_time'] = duration  # Store the duration
-        
-        # Save the results to a CSV file
+        cv_results['benign_ratio'] = benign_ratio  
+        all_results[name] = cv_results  
+
+        # Save the results for this benign ratio/model combination
         results_df = pd.DataFrame(cv_results)
-        results_df.to_csv(f"results/{name}_cv_results.csv", index=False)
+        os.makedirs('results/smote', exist_ok=True)
+        results_df.to_csv(f"results/smote/{name}_benign_{benign_ratio}_cv_results.csv", index=False)
 
+    return all_results 
 
-        # # Print the results
-        # print(f"{name} - Cross-validated scores:")
-        # for key, value in cv_results.items():
-        #     if key.startswith('test_'):
-        #         metric_name = key.split('_', 1)[1]
-        #         print(f"  {metric_name.capitalize()} - Mean: {np.mean(value):.6f}, Std: {np.std(value):.6f}")
-        # print(f"  Training Time: {duration:.3f} seconds")
-        # print("-------------------------------------------------")
-    
-    # Return the dictionary with all results for further analysis if needed
-    return all_results
 
 def plot_model_learning_curve(model, name, x_train, y_train, x_test, y_test, cv, train_sizes):
     """
@@ -169,7 +153,7 @@ def smote_training(models, x_train_norm, y_train):
         x_resampled, y_resampled = apply_smote(x_train_norm, y_train, benign_ratio=benign_ratio)
 
         # Evaluate each model using cross-validation and display detailed metrics
-        k_cross_validation(models, x_resampled, y_resampled, cv=5)
+        k_cross_validation(models, x_resampled, y_resampled, cv=5, benign_ratio=benign_ratio)
 
 def label_distribution_csv(y_train, label_mapping):
     """ This function plots a bar chart of the label distribution.
@@ -237,18 +221,21 @@ if __name__ == "__main__":
 
     df = pd.read_csv('data/cleaned_combined.csv')
 
-    x_train_norm, x_test_norm, y_train, y_test, label_map = prepare_norm_balanced_data(df, top_features, remove_duplicates=False)
+    x_train_norm, x_test_norm, y_train, y_test, label_map = prepare_norm_balanced_data(df, top_features, remove_duplicates=True)
 
-    # # Initialize models
+    # Initialize models
     models = {
         'Random Forest': RandomForestClassifier(random_state=42),
         'Decision Tree': DecisionTreeClassifier(random_state=42),
         'Logistic Regression': LogisticRegression(max_iter=1000),
-        'XGBoost': XGBClassifier(use_label_encoder=False, eval_metric='mlogloss', early_stopping_rounds=10)
+        'XGBoost': XGBClassifier(use_label_encoder=False, eval_metric='mlogloss', n_estimators=100)
     }
 
     # Cross-validate the models using the original data
-    k_cross_validation(models, x_train_norm, y_train, cv=5)
+    # k_cross_validation(models, x_train_norm, y_train, cv=5)
+
+    # Apply SMOTE to the training data
+    smote_training(models, x_train_norm, y_train)
 
     # Plot learning curves for each model
     # plot_learning_curve(models, x_train_norm, y_train, x_test_norm, y_test, cv=5)
