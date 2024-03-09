@@ -55,7 +55,7 @@ def k_cross_validation(models, x_train, y_train, cv=5, benign_ratio=0.0):
         # Save the results for this benign ratio/model combination
         results_df = pd.DataFrame(cv_results)
         os.makedirs('results/smote', exist_ok=True)
-        results_df.to_csv(f"results/smote/{name}_benign_{benign_ratio}_cv_results.csv", index=False)
+        results_df.to_csv(f"results/smote/top3_{name}_benign_{benign_ratio}_cv_results.csv", index=False)
 
     return all_results 
 
@@ -144,7 +144,7 @@ def top_features_xgboost(x_train_norm, y_train, num_features=20):
     # Save the plot to a file with high resolution
     plt.savefig("plots/top_feature_importances.png", dpi=300, bbox_inches='tight')
 
-def smote_training(models, x_train_norm, y_train):
+def smote_training(models, x_train_norm, y_train, cv=5):
     # Benign Ratio Ranges
     benign_ratios = [0.5, 0.7, 0.8]
 
@@ -154,7 +154,7 @@ def smote_training(models, x_train_norm, y_train):
         x_resampled, y_resampled = apply_smote(x_train_norm, y_train, benign_ratio=benign_ratio)
 
         # Evaluate each model using cross-validation and display detailed metrics
-        k_cross_validation(models, x_resampled, y_resampled, cv=5, benign_ratio=benign_ratio)
+        k_cross_validation(models, x_resampled, y_resampled, cv=cv, benign_ratio=benign_ratio)
 
 def label_distribution_csv(y_train, label_mapping):
     """ This function plots a bar chart of the label distribution.
@@ -220,9 +220,13 @@ if __name__ == "__main__":
         'Bwd Pkts/s', 'Flow IAT Max', 'Flow Byts/s', 'Bwd Pkt Len Mean'
     ]
 
+    top_3_features = [
+        'Init Fwd Win Byts', 'Dst Port', 'Fwd Seg Size Min', 'Fwd IAT Min', 
+    ]
+
     df = pd.read_csv('data/cleaned_combined.csv')
 
-    x_train_norm, x_test_norm, y_train, y_test, label_map = prepare_norm_balanced_data(df, top_features, remove_duplicates=True)
+    x_train_norm, x_test_norm, y_train, y_test, label_map = prepare_norm_balanced_data(df, top_3_features, remove_duplicates=True)
 
     # Initialize models
     models = {
@@ -233,11 +237,11 @@ if __name__ == "__main__":
     }
 
     # Cross-validate the models using the original data
-    # k_cross_validation(models, x_train_norm, y_train, cv=5)
+    k_cross_validation(models, x_train_norm, y_train, cv=2)
 
     # Apply SMOTE to the training data
-    smote_training(models, x_train_norm, y_train)
+    # smote_training(models, x_train_norm, y_train)
 
     # Plot learning curves for each model
-    # plot_learning_curve(models, x_train_norm, y_train, x_test_norm, y_test, cv=5)
+    # plot_learning_curve(models, x_train_norm, y_train, x_test_norm, y_test, cv=2)
     
