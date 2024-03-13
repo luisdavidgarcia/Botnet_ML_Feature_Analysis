@@ -6,7 +6,7 @@ from imblearn.over_sampling import SMOTE
 from collections import Counter
 from sklearn.preprocessing import StandardScaler
 
-def prepare_norm_balanced_data(df, top_features, random_state=42, test_size=0.25, remove_duplicates=True, modify_inplace=True):
+def prepare_norm_balanced_data(df, top_features=[], random_state=42, test_size=0.25, remove_duplicates=True, modify_inplace=True):
     """ Prepares the data for training and testing.
 
     Args:
@@ -49,7 +49,10 @@ def prepare_norm_balanced_data(df, top_features, random_state=42, test_size=0.25
         label_mapping = None
 
     # Feature Selection and Data Split
-    X = df[top_features]
+    if len(top_features) > 0:
+        X = df[top_features]
+    else:
+        X = df.drop(columns=['Label'])
     y = df['Label']
 
     # Normalization and Split
@@ -77,28 +80,38 @@ def apply_smote(x_train, y_train, random_state=42, benign_ratio=0.0):
         y_resampled: pandas Series
     """
 
+    # Checking the original class distribution
+    print(f"Total samples in the training set: {len(y_train)}")
+    print(f"Original class distribution: {Counter(y_train)}")
+
     if benign_ratio == 0.0:
         smote = SMOTE(random_state=random_state)
         x_resampled, y_resampled = smote.fit_resample(x_train, y_train)
-
-        # Checking the class distribution
-        print(f"Total samples in the training set: {len(y_train)}")
-        print(f"Original class distribution: {Counter(y_train)}")
-        print(f"Resampled class distribution: {Counter(y_resampled)}")
         return x_resampled, y_resampled
 
-    # Calculate the desired number of samples for each class
     count_labels = Counter(y_train)
     total_benign = count_labels[0]
     total_samples = len(y_train)
-    total_samples_to_add_to_dos =  (total_benign/benign_ratio - total_samples)
     total_attacks = total_samples - total_benign
     attack_ratios = {label: count/total_attacks for label, count in count_labels.items() if label != 0}
-    desired_attack_samples = {label: int(total_samples_to_add_to_dos * attack_ratios[label]) + count_labels[label] for label in attack_ratios.keys()}
+    attack_ratio = 1 - benign_ratio
 
-    # Applying SMOTE
-    smote = SMOTE(random_state=random_state, sampling_strategy=desired_attack_samples)
-    x_resampled, y_resampled = smote.fit_resample(x_train, y_train)
+    # Calculate the desired number of samples for each class
+    if benign_ratio <= 0.5:
+        # Increase attack samples
+        total_samples_to_add_to_dos =  (total_benign/benign_ratio - total_samples)
+        desired_attack_samples = {label: int(total_samples_to_add_to_dos * attack_ratios[label]) + count_labels[label] for label in attack_ratios.keys()}
+
+        # Applying SMOTE
+        smote = SMOTE(random_state=random_state, sampling_strategy=desired_attack_samples)
+        x_resampled, y_resampled = smote.fit_resample(x_train, y_train)
+    else:
+        # Increase benign samples
+        print("In here")
+        total_samples_to_add_to_benign = (total_attacks/(attack_ratio) - total_samples)
+        smote = SMOTE(random_state=random_state, sampling_strategy={0: int(total_samples_to_add_to_benign) + total_benign})
+        x_resampled, y_resampled = smote.fit_resample(x_train, y_train)
+
 
     # Checking the class distribution
     print(f"Total samples in the training set: {len(y_train)}")

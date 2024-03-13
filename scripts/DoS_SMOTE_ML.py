@@ -224,20 +224,22 @@ if __name__ == "__main__":
         'Init Fwd Win Byts', 'Dst Port', 'Fwd Seg Size Min', 'Fwd IAT Min', 
     ]
 
-    df = pd.read_csv('data/cleaned_combined.csv')
+    df = pd.read_csv('/Users/lucky/GitHub/BotnetFeatureSelection/data/combined.csv')
 
-    x_train_norm, x_test_norm, y_train, y_test, label_map = prepare_norm_balanced_data(df, top_3_features, remove_duplicates=True)
+    x_train_norm, x_test_norm, y_train, y_test, label_map = prepare_norm_balanced_data(df,top_features=top_3_features, remove_duplicates=True)
+
+    x_resampled, y_resampled = apply_smote(x_train_norm, y_train, benign_ratio=0.8)
 
     # Initialize models
-    models = {
-        'Random Forest': RandomForestClassifier(random_state=42),
-        'Decision Tree': DecisionTreeClassifier(random_state=42),
-        'Logistic Regression': LogisticRegression(max_iter=1000),
-        'XGBoost': XGBClassifier(use_label_encoder=False, eval_metric='mlogloss', n_estimators=100)
-    }
+    # models = {
+    #     'Random Forest': RandomForestClassifier(random_state=42),
+    #     'Decision Tree': DecisionTreeClassifier(random_state=42),
+    #     'Logistic Regression': LogisticRegression(max_iter=1000),
+    #     'XGBoost': XGBClassifier(use_label_encoder=False, eval_metric='mlogloss', n_estimators=100)
+    # }
 
-    # Cross-validate the models using the original data
-    k_cross_validation(models, x_train_norm, y_train, cv=2)
+    # # Cross-validate the models using the original data
+    # k_cross_validation(models, x_train_norm, y_train, cv=2)
 
     # Apply SMOTE to the training data
     # smote_training(models, x_train_norm, y_train)
