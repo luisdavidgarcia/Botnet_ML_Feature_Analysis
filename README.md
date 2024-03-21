@@ -56,4 +56,4 @@ To replicate our study or use the system as a foundation for further research, p
 We extend our gratitude to Dr. Dongfeng Fang for her guidance and support, and California Polytechnic State University for the resources provided for our research.
 License
 
-This project is licensed under the MIT License - see the [LICENSE.md](./LICENSE.md) file for details.
+This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
