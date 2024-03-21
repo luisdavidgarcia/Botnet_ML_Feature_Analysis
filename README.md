@@ -9,13 +9,24 @@ With the increasing adoption of IoT in sectors like energy, healthcare, and auto
 
 The detailed report, "Quantifying Feature Impact on IoT Intrusion Detection Performance in Imbalanced Botnet Datasets with Explainable AI", is included in this repository as `Quantifying_Feature_Impact_on_IoT_Intrusion_Detection_Performance_in_Imbalanced_Botnet_Datasets_with_Explainable_AI.pdf`.
 
+## Poster
+
+The poster for this project is also included in the repository as a PNG, which is also here below:
+
+<p align="center">
+  <img alt="Poster Image" src="./CSC522-Poster-DDoS Detection-LuisNicholasr.png">
+  <br>
+  <em>Figure 1: Poster for Project</em>
+</p>
+
 ## System Diagram
 
 The system diagram provided outlines the methodology of our research, detailing the process from dataset preprocessing to the running of various classifiers and feature selection techniques.
+
 <p align="center">
-  <img width="487" alt="Screenshot 2024-03-21 at 10 37 14 AM" src="https://github.com/luisdavidgarcia/Botnet_ML_Feature_Analysis/assets/87344382/32e9272e-c1c7-40b7-a8fc-d7cf958ae92a">
+  <img width="487" alt="System Diagram" src="https://github.com/luisdavidgarcia/Botnet_ML_Feature_Analysis/assets/87344382/32e9272e-c1c7-40b7-a8fc-d7cf958ae92a">
   <br>
-  <em>Figure 1: System Architecture Diagram </em>
+  <em>Figure 2: System Architecture Diagram </em>
 </p>
 
 ## Models and Performance
