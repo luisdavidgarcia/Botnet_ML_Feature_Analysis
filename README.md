@@ -12,10 +12,11 @@ The detailed report, "Quantifying Feature Impact on IoT Intrusion Detection Perf
 ## System Diagram
 
 The system diagram provided outlines the methodology of our research, detailing the process from dataset preprocessing to the running of various classifiers and feature selection techniques.
-
-<img width="487" alt="Screenshot 2024-03-21 at 10 37 14 AM" src="https://github.com/luisdavidgarcia/Botnet_ML_Feature_Analysis/assets/87344382/32e9272e-c1c7-40b7-a8fc-d7cf958ae92a">
-
-Figure 1: System Architecture Diagram
+<p align="center">
+  <img width="487" alt="Screenshot 2024-03-21 at 10 37 14 AM" src="https://github.com/luisdavidgarcia/Botnet_ML_Feature_Analysis/assets/87344382/32e9272e-c1c7-40b7-a8fc-d7cf958ae92a">
+  <br>
+  <em>Figure 1: System Architecture Diagram </em>
+</p>
 
 ## Models and Performance
 
