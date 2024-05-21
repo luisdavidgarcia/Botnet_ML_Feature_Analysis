@@ -1,3 +1,4 @@
+import time
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
@@ -12,20 +13,35 @@ from sklearn.metrics import classification_report
 
 from lightgbm import LGBMClassifier
 
+# Top 10 features
+top_ten_features = [
+    "Init Fwd Win Byts", 
+    "Fwd Header Len", 
+    "Fwd Seg Size Min", 
+    "Dst Port", 
+    "Fwd IAT Min", 
+    "Subflow Bwd Pkts", 
+    "Bwd Pkts/s", 
+    "Pkt Size Avg", 
+    "Bwd Header Len", 
+    "Fwd IAT Tot"
+]
+
 # Load the dataset
-df = pd.read_csv('/Users/lucky/GitHub/BotnetFeatureSelection/data/02-15-2018.csv')
-x_train, x_test, y_train, y_test, label_map = prepare_norm_balanced_data(df)
+data_path = "/Users/lucky/GitHub/BotnetFeatureSelection/data/cleaned_combined.csv"
+df = pd.read_csv(data_path)
+x_train, x_test, y_train, y_test, label_map = prepare_norm_balanced_data(df, top_features=top_ten_features)
 
-# Benign Ratio Ranges
-benign_ratios = [0.5, 0.7, 0.8]
+# # Benign Ratio Ranges
+# benign_ratios = [0.5, 0.7, 0.8]
 
-# Train LGBoost model
-lgb_model = LGBMClassifier(n_estimators=100, learning_rate=0.05, random_state=42)
-lgb_model.fit(x_train, y_train)
+# # Train LGBoost model
+# lgb_model = LGBMClassifier(n_estimators=100, learning_rate=0.05, random_state=42)
+# lgb_model.fit(x_train, y_train)
 
-# Model Evaluation
-predictions = lgb_model.predict(x_test)
-print(classification_report(y_test, predictions))
+# # Model Evaluation
+# predictions = lgb_model.predict(x_test)
+# print(classification_report(y_test, predictions))
 
 # Apply SMOTE
 # for benign_ratio in benign_ratios:
@@ -36,27 +52,37 @@ print(classification_report(y_test, predictions))
 #     # print(f"Len of x_train: {len(x_train)} and len of x_resampled: {len(x_resampled)}")
 #     # print("---------------------------------------------------------------------")
 
-#     # Initialize models
-#     rf_model = RandomForestClassifier(random_state=42)
-#     dt_model = DecisionTreeClassifier(random_state=42)
-#     lr_model = LogisticRegression(max_iter=1000)
-#     xgb_model = XGBClassifier(use_label_encoder=False, eval_metric='mlogloss')
 
-#     # Train and evaluate each model
-#     models = [rf_model, dt_model, lr_model, xgb_model]
-#     model_names = ['Random Forest', 'Decision Tree', 'Logistic Regression', 'XGBoost']
+# Initialize models
+rf_model = RandomForestClassifier(random_state=42)
+dt_model = DecisionTreeClassifier(random_state=42)
+lr_model = LogisticRegression(max_iter=1000)
+xgb_model = XGBClassifier(use_label_encoder=False, eval_metric='mlogloss')
 
-#     for model, name in zip(models, model_names):
-#         model.fit(x_train, y_train)
-#         y_pred = model.predict(x_test)
+# Train and evaluate each model
+models = [rf_model, dt_model, lr_model, xgb_model]
+model_names = ['Random Forest', 'Decision Tree', 'Logistic Regression', 'XGBoost']
 
-#         # Calculate metrics
-#         accuracy = accuracy_score(y_test, y_pred)
-#         precision = precision_score(y_test, y_pred, average='macro')
-#         recall = recall_score(y_test, y_pred, average='macro')
-#         f1 = f1_score(y_test, y_pred, average='macro')
+for model, name in zip(models, model_names):
+    # Train
+    model_training_start_time = time.time()
+    model.fit(x_train, y_train)
+    model_training_end_time = time.time()
+    model_training_time = model_training_end_time - model_training_start_time
 
-#         print(f"{name} - Accuracy: {accuracy}, Precision: {precision}, Recall: {recall}, F1 Score: {f1}")
+    # Predict
+    model_prediction_start_time = time.time()
+    y_pred = model.predict(x_test)
+    model_prediction_end_time = time.time()
+    model_prediction_time = model_prediction_end_time - model_prediction_start_time
 
-#     print("---------------------------------------------------------------------")
-#     # Continue with your RFE steps...
+    # Calculate metrics
+    accuracy = accuracy_score(y_test, y_pred)
+    precision = precision_score(y_test, y_pred, average='macro')
+    recall = recall_score(y_test, y_pred, average='macro')
+    f1 = f1_score(y_test, y_pred, average='macro')
+
+    print(f"{name} - Accuracy: {accuracy}, Precision: {precision}, Recall: {recall}, F1 Score: {f1}, Training Time: {model_training_time}, Prediction Time: {model_prediction_time}")
+
+print("Resuls for Classification with Top 10 Feature Dataset-------------------------")
+# Continue with your RFE steps...
