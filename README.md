@@ -1,5 +1,15 @@
 # IoT Intrusion Detection System Performance in Imbalanced Botnet Datasets
 
+## ⚠️ CAUTION READ BEFORE CONTINUING
+
+The high results from our models are due to errors with the CIC-IDS-2018 dataset, which we do not encourage anyone to use. Please refer to this article for the exact issues with the CIC flowmeter: [Error Prevalence in NIDS datasets: A Case Study on CIC-IDS-2017 and CSE-CIC-IDS-2018
+](https://ieeexplore.ieee.org/document/9947235).
+
+Instead we promote the use of your own dataset with these models we used or creating one with this testbed [Real-Time DDoS Detection Using a Docker-Based Machine Learning Testbed
+](https://github.com/luisdavidgarcia/DDoS-Hybrid-Detection-System).
+
+---
+
 This repository contains the research work conducted by Luis David Garcia and Nicholas Zarate. The focus of our study is on enhancing Intrusion Detection Systems (IDS) for the Internet of Things (IoT) by analyzing the impact of dataset imbalance on the efficacy of machine learning models in detecting security threats such as DoS and DDoS attacks.
 Abstract
 
